@@ -8,7 +8,7 @@
 const CONFIG = {
 
   // ── Azure AD ──────────────────────────────────────────────
-  clientId: 'VYPLNIT_CLIENT_ID',                      // Application (client) ID z App Registration "ESOX CDE Onboarding"
+  clientId: '288264b8-5a4e-4db2-af25-633e94f88373',   // Application (client) ID z App Registration "ESOX CDE Onboarding"
   tenantId: 'e610f4b4-710a-4f49-aa5b-c54764316d27',   // Directory (tenant) ID – esox.red
 
   // URL nasazení – musí přesně odpovídat SPA Redirect URI v App Registration
