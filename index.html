@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESOX – CDE Onboarding</title>
+  <script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"
+    integrity="sha384-TZi5bEkGDx/GJ3nLDHhcm26YVl7EWnBs+IiSxxRDHBHjPCwHJLFsY/swnuFDT/q"
+    crossorigin="anonymous"></script>
+  <style>
+    :root { color-scheme: light; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+           background: #e0e0e0; color: #111; min-height: 100vh; font-size: 14px; }
+
+    /* ── States ─────────────────────────────── */
+    .state { display: none; }
+    .state.visible { display: flex; }
+    #stateApp.visible { display: block; }
+    .centered { align-items: center; justify-content: center;
+                min-height: 100vh; flex-direction: column; gap: 16px; }
+
+    /* ── Spinner ─────────────────────────────── */
+    .spinner { width: 38px; height: 38px; border: 3px solid #ccc;
+               border-top-color: #e41a12; border-radius: 50%;
+               animation: spin .75s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Login ───────────────────────────────── */
+    .login-card { background: #fff; border: 1px solid #ccc; border-radius: 12px;
+                  padding: 44px 40px; max-width: 400px; width: 100%;
+                  text-align: center; box-shadow: 0 2px 12px rgba(0,0,0,.1); }
+    .login-logo { display: flex; align-items: center; justify-content: center;
+                  gap: 8px; margin-bottom: 24px; }
+    .login-logo-text { font-size: 26px; font-weight: 900; color: #e41a12; letter-spacing: 1px; }
+    .login-card h1 { font-size: 20px; margin-bottom: 8px; color: #111; }
+    .login-card p  { color: #555; font-size: 13px; margin-bottom: 28px; line-height: 1.5; }
+    .login-note { font-size: 11px; color: #888; margin-top: 14px; }
+    .btn-ms { background: #0078D4; color: #fff; border: none; border-radius: 6px;
+              padding: 12px 20px; font-size: 14px; font-weight: 600; cursor: pointer;
+              width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .btn-ms:hover { background: #106EBE; }
+
+    /* ── Nav ─────────────────────────────────── */
+    nav { background: #fff !important; border-bottom: 2px solid #ccc;
+          height: 52px; padding: 0 22px;
+          display: flex; align-items: center; justify-content: space-between;
+          position: sticky; top: 0; z-index: 100; }
+    .nav-brand { display: flex; align-items: center; gap: 6px; }
+    .nav-logo-text { font-size: 20px; font-weight: 900; color: #e41a12; letter-spacing: 1px; }
+    .nav-right { display: flex; align-items: center; gap: 10px; }
+    .nav-username { font-size: 12px; color: #444; }
+    .nav-avatar { width: 28px; height: 28px; border-radius: 50%; background: #e41a12;
+                  display: flex; align-items: center; justify-content: center;
+                  font-size: 10px; font-weight: 800; color: #fff !important; }
+    .btn-logout { background: #e41a12 !important; border: none !important;
+                  color: #fff !important; font-weight: 700 !important;
+                  padding: 5px 13px; border-radius: 5px; font-size: 12px; cursor: pointer; }
+    .btn-logout:hover { background: #b51510 !important; }
+
+    /* ── Tabs ────────────────────────────────── */
+    .tabs { display: flex; background: #d0d0d0; border-bottom: 2px solid #bbb;
+            padding: 0 20px; }
+    .tab { padding: 10px 20px; font-size: 13px; font-weight: 600; color: #555;
+           cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; }
+    .tab.active { color: #e41a12; border-bottom-color: #e41a12; background: #e0e0e0; }
+    .tab:hover:not(.active) { color: #222; }
+
+    /* ── Wrap ────────────────────────────────── */
+    .wrap { max-width: 880px; margin: 0 auto; padding: 22px 18px; }
+    h1 { font-size: 20px; font-weight: 700; color: #111; margin-bottom: 8px; }
+    .desc { font-size: 13px; color: #444; margin-bottom: 6px; line-height: 1.5; }
+    .desc-info { font-size: 12px; color: #555; margin-bottom: 20px; line-height: 1.6;
+                 border-left: 3px solid #e41a12; padding: 8px 12px;
+                 background: #f5f5f5; border-radius: 0 5px 5px 0; }
+
+    /* ── Cards ───────────────────────────────── */
+    .card { background: #cccccc !important; border: 1px solid #aaa;
+            border-radius: 8px; padding: 18px; margin-bottom: 14px; }
+    .card-hdr { font-size: 11px; font-weight: 700; text-transform: uppercase;
+                letter-spacing: .7px; color: #222 !important;
+                border-bottom: 1px solid #aaa; padding-bottom: 8px; margin-bottom: 14px; }
+
+    /* ── Form fields ─────────────────────────── */
+    .fg { margin-bottom: 12px; }
+    .fg label { display: block; font-size: 10px; font-weight: 700;
+                text-transform: uppercase; letter-spacing: .5px;
+                color: #222 !important; margin-bottom: 5px; }
+    .fg select, .fg input[type=text], .fg input[type=email], .fg input[type=tel] {
+      width: 100%; padding: 8px 11px;
+      border: 1px solid #999 !important; border-radius: 5px;
+      font-size: 13px; color: #111 !important; background: #fff !important;
+      font-family: inherit; }
+    .fg select:focus, .fg input:focus { outline: none; border-color: #e41a12 !important; }
+    .fg select.err, .fg input.err { border: 2px solid #e41a12 !important; background: #fff5f5 !important; }
+    .err-msg { font-size: 11px; color: #e41a12; margin-top: 3px; display: none; }
+    .err-msg.show { display: block; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    /* ── User block ──────────────────────────── */
+    .ue { background: #cccccc !important; border: 1px solid #aaa;
+          border-radius: 8px; padding: 18px; margin-bottom: 12px; }
+    .ue-head { display: flex; justify-content: space-between; align-items: center;
+               margin-bottom: 14px; border-bottom: 1px solid #aaa; padding-bottom: 9px; }
+    .ue-num { display: inline-block; background: #e41a12; color: #fff !important;
+              font-size: 11px; font-weight: 700; border-radius: 4px;
+              padding: 2px 8px; margin-right: 8px; }
+    .ue-label { font-size: 13px; font-weight: 700; color: #111 !important; }
+    .btn-rm { background: none; border: none; color: #888; font-size: 20px;
+              cursor: pointer; padding: 0 4px; line-height: 1; }
+    .btn-rm:hover { color: #e41a12; }
+
+    /* ── Groups per user ─────────────────────── */
+    .grp-block { margin-top: 14px; border-top: 1px solid #aaa; padding-top: 14px; }
+    .grp-hdr { font-size: 10px; font-weight: 700; text-transform: uppercase;
+               letter-spacing: .6px; color: #222 !important; margin-bottom: 5px; }
+    .grp-note { font-size: 11px; color: #444 !important; margin-bottom: 8px; }
+    .grp-search-inp { width: 100%; padding: 7px 11px;
+                      border: 1px solid #999 !important; border-radius: 5px;
+                      font-size: 13px; color: #111 !important; background: #fff !important;
+                      font-family: inherit; margin-bottom: 6px; }
+    .grp-search-inp:focus { outline: none; border-color: #e41a12 !important; }
+    .groups-list { border: 1px solid #999; border-radius: 5px;
+                   background: #fff !important; max-height: 200px; overflow-y: auto;
+                   display: flex; flex-direction: column; }
+    .grp-row { display: flex; align-items: center; gap: 9px; padding: 6px 12px;
+               font-size: 13px; color: #111 !important; border-bottom: 1px solid #e8e8e8;
+               cursor: pointer; background: #fff !important; user-select: none; }
+    .grp-row:last-child { border-bottom: none; }
+    .grp-row:hover { background: #f5f5f5 !important; }
+    .grp-row input[type=checkbox] { accent-color: #e41a12; cursor: pointer; flex-shrink: 0; }
+    .grp-row.hidden { display: none !important; }
+    .grp-no-match { display: none; font-size: 12px; color: #888; padding: 8px 12px; }
+    .grp-no-match.show { display: block; }
+    .grp-sel-info { font-size: 11px; color: #333 !important; margin-top: 5px; min-height: 14px; }
+    .grp-err { font-size: 11px; color: #e41a12; margin-top: 4px; display: none; }
+    .grp-err.show { display: block; }
+
+    /* ── Form error bar ──────────────────────── */
+    .form-err-bar { background: #fff0f0; border: 1px solid #e41a12;
+                    border-radius: 6px; padding: 10px 14px; font-size: 12px;
+                    color: #b51510; margin-bottom: 16px; display: none; }
+    .form-err-bar.show { display: block; }
+
+    /* ── Buttons ─────────────────────────────── */
+    .add-btn { width: 100%; padding: 11px; border: 2px dashed #999;
+               border-radius: 7px; background: #c0c0c0 !important; color: #333 !important;
+               font-size: 13px; font-weight: 600; margin-bottom: 18px;
+               cursor: pointer; font-family: inherit; }
+    .add-btn:hover { background: #b0b0b0 !important; color: #111 !important; border-color: #777; }
+    .btn-row { display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px; }
+    .btn { padding: 9px 20px; border-radius: 6px; font-size: 13px; font-weight: 700;
+           cursor: pointer; border: none; font-family: inherit; }
+    .btn-clear { background: #e41a12 !important; color: #fff !important; }
+    .btn-clear:hover { background: #b51510 !important; }
+    .btn-submit { background: #2e7d32 !important; color: #fff !important; }
+    .btn-submit:hover { background: #1b5e20 !important; }
+    .btn-sm { padding: 5px 11px; font-size: 12px; }
+    .btn-email { background: #0078D4 !important; color: #fff !important; }
+    .btn-email:hover { background: #106ebe !important; }
+    .btn-email:disabled { background: #aaa !important; cursor: not-allowed; }
+    .btn-init { background: #555 !important; color: #fff !important; }
+
+    /* ── Success banner ──────────────────────── */
+    .success-bar { background: #d4edda; border: 1px solid #2e7d32;
+                   border-radius: 6px; padding: 12px 16px; font-size: 13px;
+                   color: #155724; margin-bottom: 16px; display: none; }
+    .success-bar.show { display: block; }
+
+    /* ── Admin dashboard ─────────────────────── */
+    .filters { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr auto;
+               gap: 8px; background: #ccc; border: 1px solid #aaa;
+               border-radius: 7px; padding: 12px; margin-bottom: 12px; }
+    .f-label { font-size: 10px; font-weight: 700; text-transform: uppercase;
+               letter-spacing: .5px; color: #333; margin-bottom: 4px; }
+    .f-inp { width: 100%; padding: 6px 9px; border: 1px solid #999 !important;
+             border-radius: 4px; font-size: 12px; color: #111 !important;
+             background: #fff !important; font-family: inherit; }
+    .f-inp:focus { outline: none; border-color: #e41a12 !important; }
+    .btn-reset { align-self: flex-end; padding: 7px 14px; background: #e41a12 !important;
+                 color: #fff !important; border: none; border-radius: 4px;
+                 font-size: 12px; font-weight: 700; cursor: pointer; }
+    .result-count { font-size: 11px; color: #666; margin-bottom: 8px; }
+    .tbl-wrap { background: #fff !important; border: 1px solid #bbb;
+                border-radius: 7px; overflow: hidden; overflow-x: auto; margin-bottom: 12px; }
+    table { width: 100%; border-collapse: collapse; min-width: 860px; }
+    thead tr { background: #cccccc !important; }
+    th { padding: 9px 10px; text-align: left; font-size: 10px; font-weight: 700;
+         text-transform: uppercase; letter-spacing: .5px; color: #222 !important;
+         border-bottom: 2px solid #aaa; white-space: nowrap; }
+    td { padding: 7px 10px; border-bottom: 1px solid #eee; color: #111 !important;
+         background: #fff !important; vertical-align: top; font-size: 12px; }
+    tr:hover td { background: #f8f8f8 !important; }
+    .badge { display: inline-block; padding: 2px 7px; border-radius: 3px;
+             font-size: 10px; font-weight: 700; }
+    .badge-wait { background: #fff3cd; color: #856404; }
+    .badge-done { background: #d4edda; color: #155724; }
+    .badge-progress { background: #d1ecf1; color: #0c5460; }
+    .checks { display: flex; gap: 4px; }
+    .chk { width: 22px; height: 22px; border-radius: 3px; border: 1.5px solid #bbb;
+           display: flex; align-items: center; justify-content: center;
+           font-size: 11px; cursor: pointer; background: #fff !important;
+           flex-shrink: 0; position: relative; title: ''; }
+    .chk.done { background: #2e7d32 !important; border-color: #2e7d32; color: #fff !important; }
+    .chk:hover::after { content: attr(data-tip); position: absolute; bottom: 26px; left: 50%;
+                        transform: translateX(-50%); background: #333; color: #fff;
+                        padding: 3px 7px; border-radius: 3px; font-size: 10px;
+                        white-space: nowrap; z-index: 10; pointer-events: none; }
+    .admin-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+    .empty-row td { text-align: center; padding: 24px; color: #888; }
+    .loading-row td { text-align: center; padding: 20px; color: #666; }
+
+    @media (max-width: 600px) {
+      .grid2 { grid-template-columns: 1fr; }
+      .filters { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- STATE: Loading -->
+<div id="stateLoading" class="state visible centered">
+  <div class="spinner"></div>
+  <p style="color:#555;font-size:13px;">Načítání…</p>
+</div>
+
+<!-- STATE: Login -->
+<div id="stateLogin" class="state centered">
+  <div class="login-card">
+    <div class="login-logo">
+      <svg width="16" height="26" viewBox="0 0 13 21" fill="none">
+        <polygon points="8,0 0,12 6,12 4,21 13,9 7,9" fill="#e41a12"/>
+      </svg>
+      <span class="login-logo-text">ESOX</span>
+    </div>
+    <h1>CDE Onboarding</h1>
+    <p>Přihlaste se svým firemním účtem ESOX&nbsp;(@esox.red) pro přístup do systému.</p>
+    <button class="btn-ms" onclick="login()">
+      <svg width="18" height="18" viewBox="0 0 21 21" fill="none">
+        <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
+        <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
+        <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
+        <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+      </svg>
+      Přihlásit přes Microsoft
+    </button>
+    <p class="login-note">Přístup pouze pro účty @esox.red</p>
+  </div>
+</div>
+
+<!-- STATE: App -->
+<div id="stateApp" class="state">
+
+  <!-- Nav -->
+  <nav>
+    <div class="nav-brand">
+      <svg width="13" height="21" viewBox="0 0 13 21" fill="none">
+        <polygon points="8,0 0,12 6,12 4,21 13,9 7,9" fill="#e41a12"/>
+      </svg>
+      <span class="nav-logo-text">ESOX</span>
+    </div>
+    <div class="nav-right">
+      <span class="nav-username" id="navUsername"></span>
+      <div class="nav-avatar" id="navAvatar"></div>
+      <button class="btn-logout" onclick="logout()">Odhlásit</button>
+    </div>
+  </nav>
+
+  <!-- Tabs (admin only) -->
+  <div class="tabs" id="tabsBar" style="display:none">
+    <div class="tab active" id="tabForm" onclick="showTab('form')">Žádost o přidání účastníků</div>
+    <div class="tab" id="tabAdmin" onclick="showTab('admin')">Správa žádostí</div>
+  </div>
+
+  <!-- PANEL: Form -->
+  <div id="panelForm">
+    <div class="wrap">
+      <h1>Žádost o přidání účastníků do CDE</h1>
+      <p class="desc">Zadejte údaje účastníků projektu a přiřaďte jim pracovní skupiny.</p>
+      <p class="desc-info">Po odeslání žádosti administrátor projektu schválí žádost, rozešle pozvánku a přidá účastníkům oprávnění a přístupová práva.</p>
+
+      <div class="form-err-bar" id="formErrBar"></div>
+      <div class="success-bar" id="successBar"></div>
+
+      <!-- Projekt -->
+      <div class="card">
+        <div class="card-hdr">Projekt stavby</div>
+        <div class="fg" id="fg-projekt">
+          <label>Projekt *</label>
+          <select id="projekt">
+            <option value="">— Vyberte projekt —</option>
+          </select>
+          <div class="err-msg" id="err-projekt">Vyberte projekt.</div>
+        </div>
+      </div>
+
+      <!-- Uživatelé -->
+      <div id="usersContainer"></div>
+
+      <button class="add-btn" onclick="addUser()">+ Přidat dalšího účastníka</button>
+
+      <div class="btn-row">
+        <button class="btn btn-clear" onclick="clearForm()">Vymazat formulář</button>
+        <button class="btn btn-submit" onclick="submitForm()">Odeslat žádost o přidání</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PANEL: Admin -->
+  <div id="panelAdmin" style="display:none">
+    <div class="wrap" style="max-width:1100px">
+      <h1>Správa žádostí</h1>
+      <p class="desc" style="margin-bottom:16px">Přehled všech odeslaných žádostí. Zaškrtněte kroky zpracování u každého záznamu.</p>
+
+      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+        <button class="btn btn-submit btn-sm" onclick="loadAdminData()">Obnovit data</button>
+        <button class="btn btn-init btn-sm" id="btnInitDb" onclick="initDatabase()">Inicializovat databázi</button>
+      </div>
+
+      <div class="filters">
+        <div>
+          <div class="f-label">Projekt</div>
+          <select class="f-inp" id="fProjekt" onchange="applyFilters()">
+            <option value="">Všechny projekty</option>
+          </select>
+        </div>
+        <div>
+          <div class="f-label">Firma</div>
+          <input class="f-inp" id="fFirma" placeholder="Hledat firmu…" oninput="applyFilters()">
+        </div>
+        <div>
+          <div class="f-label">Jméno / E-mail</div>
+          <input class="f-inp" id="fJmeno" placeholder="Hledat osobu…" oninput="applyFilters()">
+        </div>
+        <div>
+          <div class="f-label">Stav</div>
+          <select class="f-inp" id="fStav" onchange="applyFilters()">
+            <option value="">Všechny stavy</option>
+            <option value="ceka">Čeká na vyřízení</option>
+            <option value="progress">Probíhá</option>
+            <option value="done">Dokončeno</option>
+          </select>
+        </div>
+        <button class="btn-reset" onclick="resetFilters()">Resetovat</button>
+      </div>
+
+      <div class="result-count" id="resultCount"></div>
+
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Datum</th>
+              <th>Zadal</th>
+              <th>Projekt</th>
+              <th>Jméno</th>
+              <th>Firma</th>
+              <th>E-mail</th>
+              <th>Skupiny</th>
+              <th title="1=Čeká na vyřízení, 2=E-mail odeslán, 3=Pozván, 4=Prac. balíček, 5=Zápis SD">
+                Zpracování&nbsp;①②③④⑤</th>
+              <th>Akce</th>
+            </tr>
+          </thead>
+          <tbody id="adminTbody">
+            <tr class="loading-row"><td colspan="9">Načítání dat…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /stateApp -->
+
+<script src="config.js"></script>
+<script>
+'use strict';
+
+// ── Fallback data ────────────────────────────────────────────────────────────
+const PROJECTS_FALLBACK = [
+  {code:'26 111 01', name:'ZZS JMK Břeclav'},
+  {code:'24 1 11 09', name:'BD Notino Vlkova'},
+  {code:'25 1 11 03', name:'Vila Osnice Praha'},
+  {code:'25 1 11 07', name:'Poliklinika Viniční'},
+  {code:'25 1 11 09', name:'SIKO Showroom Brno'},
+  {code:'25 111 11', name:'Rezidence školka Břeclav'},
+  {code:'25 111 14', name:'Klášter Voršilky Brno'},
+  {code:'25 111 15', name:'ZŠ Písnice'},
+  {code:'26 111 04', name:'TDV Kopřivnice'}
+];
+
+const GROUPS_FALLBACK = [
+  "000-Investor","000-TDI","001-Generální dodavatel","002-Projekce",
+  "003-Koordinátor a TMS BOZP","004-Úřady a dotčené orgány",
+  "020-Bourací práce","021-Pomocné stavební práce","022-Demolice objektů",
+  "023-Kácení","024-Bourání s azbestem","025-Jádrové vrtání","026-Suť a odpad",
+  "030-Zemní práce","031-Výkopy a terénní úpravy","032-Vrty pro TČ","033-Geodetické práce",
+  "040-Zakládání","041-Základové konstrukce","042-Zpevňování zemin",
+  "043-Injektáže","044-Záporové stěny","045-Piloty","046-Mikropiloty",
+  "050-Hrubá stavba – betonové práce","051-Zdění","052-Montované konstrukce",
+  "053-Ocelové konstrukce","054-Dřevěné konstrukce","055-Prefabrikáty","056-Bednění",
+  "060-Střechy – plochá střecha","061-Střechy – šikmá střecha","062-Klempířské práce",
+  "063-Střešní okna a světlíky","064-Terasy a balkony",
+  "070-Fasáda – ETICS","071-Fasáda – provětrávaná","072-Fasáda – obklady",
+  "073-Fasáda – omítky","074-Fasáda – sklo","075-Lešení",
+  "080-Výplně otvorů – okna","081-Výplně otvorů – dveře a vrata",
+  "082-Prosklené stěny a fasádní systémy","083-Garážová vrata",
+  "090-Vnitřní omítky a potěry","091-SDK konstrukce","092-Podhledy",
+  "093-Příčky","094-Stěrkové podlahy a epoxidy","095-Obklady a dlažby",
+  "096-Podlahové krytiny","097-Malby a nátěry","098-Truhlářské práce",
+  "100-Zdravotechnika","101-Kanalizace","102-Vodovod","103-Plynoinstalace","104-Sprinklerová ochrana",
+  "110-Vytápění a chlazení","111-Tepelné čerpadlo","112-Vzduchotechnika a klimatizace",
+  "113-Kotelna a výměníková stanice","114-Chlazení – technologické",
+  "120-Elektroinstalace – silnoproud","121-Elektroinstalace – slaboproud",
+  "122-Rozvaděče","123-Osvětlení","124-Hromosvod a uzemnění",
+  "125-Fotovoltaika","126-Záložní zdroj – UPS, agregát",
+  "130-Datová síť a IT infrastruktura","131-Kamerový systém – CCTV",
+  "132-Přístupový systém – ACS","133-Elektronická požární signalizace – EPS",
+  "134-Evakuační rozhlas – EPS EVAK","135-Pult centrální ochrany – PCO","136-Strukturovaná kabeláž",
+  "140-Výtahy a zdvihací zařízení","141-Eskalátory a pohyblivé chodníky","142-Jeřáby a manipulační technika",
+  "150-Zpevněné plochy – komunikace","151-Chodníky a dlažba",
+  "152-Opěrné a zárubní zdi","153-Oplocení","154-Sadové úpravy","155-Drobné stavební objekty",
+  "160-Technologická zařízení budov","161-Kuchyňská technologie","162-Prádelna a žehlírna","163-Zdravotnická technologie",
+  "170-Zařízení staveniště","171-Doprava a logistika","172-Bezpečnostní služba staveniště",
+  "180-Revize a zkoušení","181-Měření a regulace – MaR","182-Uvedení do provozu",
+  "190-Dokumentace skutečného provedení","191-Pasportizace stavby","192-Geometrický plán","193-Laserové skenování",
+  "200-Rekonstrukce a modernizace","201-Sanace konstrukcí","202-Hydroizolace spodní stavby",
+  "203-Sanace vlhkosti","204-Opravy trhlin a výplní","205-Injektáže sanační",
+  "210-Izolace tepelné – podlahy","211-Izolace tepelné – střecha","212-Izolace tepelné – fasáda","213-Izolace akustické","214-Izolace protipožární",
+  "220-Výstavba na klíč – bytový dům","221-Výstavba na klíč – rodinný dům","222-Výstavba na klíč – komerční objekt","223-Výstavba na klíč – průmyslový objekt",
+  "230-Bazény a vodní prvky","231-Sauny a wellness","232-Sportovní povrchy","233-Dětská hřiště","234-Venkovní fitness",
+  "240-Interiérový design","241-Interiérové vybavení – nábytek","242-Interiérové vybavení – kuchyně","243-Záclony a žaluzie","244-Výzdoba a dekorace",
+  "250-Výrobní haly – ocelová konstrukce","251-Výrobní haly – opláštění","252-Průmyslové podlahy","253-Průmyslové vrata a sekce","254-Jeřábové dráhy",
+  "260-Logistické objekty","261-Sklady a regálové systémy","262-Chladírny a mrazírny","263-Dopravníky a manipulační technika",
+  "270-Čistírny odpadních vod","271-Vodojem a vodní hospodářství","272-Čerpací stanice","273-Retenční a akumulační nádrže",
+  "280-Mosty a lávky","281-Tunely a podchody","282-Opěrné stěny a gabiony","283-Protihlukové stěny","284-Podzemní stavby",
+  "290-Komunikace – asfaltové povrchy","291-Komunikace – betonové povrchy","292-Komunikace – dlážděné povrchy","293-Parkoviště a parkovací systémy","294-Železnice a tramvajové dráhy",
+  "300-Venkovní kanalizace – splašková","301-Venkovní kanalizace – dešťová","302-Přípojky kanalizace","303-Retenční nádrže dešťové vody","304-Vsakovací systémy",
+  "310-Venkovní vodovod","311-Přípojky vodovodu","312-Vodoměrné šachty","313-Požární vodovod venkovní",
+  "320-Plynovodní sítě – STL","321-Plynovodní sítě – NTL","322-Přípojky plynu",
+  "330-Teplovody a horkovody","331-Předizolované potrubí","332-Tepelné přípojky",
+  "340-Venkovní silové vedení – VN","341-Venkovní silové vedení – NN","342-Přípojky elektro","343-Trafostanice",
+  "350-Sdělovací sítě – optika","351-Sdělovací sítě – metalické","352-Radiokomunikační sítě",
+  "360-Veřejné osvětlení","361-Vánoční a slavnostní osvětlení","362-Orientační a informační systémy",
+  "370-Dopravní značení – svislé","371-Dopravní značení – vodorovné","372-Semafory a světelná signalizace","373-Parkovací automaty",
+  "380-Terénní a sadové práce – kácení","381-Výsadba stromů a keřů","382-Trávníky a travní plochy","383-Zavlažovací systémy",
+  "384-Mobiliář – lavičky, odpadkové koše","385-Fontány a vodní plochy",
+  "390-Sportovní hřiště – zázemí","391-Atletické dráhy","392-Tribuny a hlediště","393-Tenisové kurty","394-Bazény venkovní",
+  "400-Technologie – výrobní linka","401-Technologie – potravinářská","402-Technologie – chemická","403-Technologie – farmaceutická","404-Technologie – zpracování odpadů",
+  "410-Potrubní rozvody – procesní","411-Potrubní rozvody – utility","412-Potrubní rozvody – sanitární průmysl",
+  "420-Zásobníky a nádrže – technologické","421-Reaktory a tlakové nádoby","422-Filtry a separátory",
+  "430-Kompresorové a čerpací stanice","431-Chladicí okruhy průmyslové","432-Průmyslová vzduchotechnika",
+  "440-Elektrické pohony a frekvenční měniče","441-Průmyslové rozvaděče","442-Průmyslová automatizace – PLC/SCADA",
+  "450-Hasicí systémy – plyn","451-Hasicí systémy – pěna","452-Hasicí systémy – prášek",
+  "460-Záložní zdroje – dieselagregáty","461-Záložní zdroje – bateriové systémy","462-Nepřerušitelné napájení – datová centra",
+  "470-Datová centra – infrastruktura","471-Servery a aktivní prvky","472-Kabelové žlaby a trasy",
+  "480-Zdravotnická technika – plyny","481-Zdravotnická technika – operační sály","482-Zdravotnická technika – sterilizace",
+  "490-Zařízení staveniště"
+];
+
+// ── App state ────────────────────────────────────────────────────────────────
+let currentUser = null;
+let msalInstance = null;
+let spSiteId = null;
+let databazeDriveItemId = null;
+let podkladyDriveItemId = null;
+let GROUPS_LIST = [];
+let PROJECTS_LIST = [];
+let adminRows = [];  // [{rowIndex, values:[...16 cols]}]
+let userCount = 0;
+const loginRequest = { scopes: ['User.Read', 'Files.ReadWrite.All', 'Mail.Send'] };
+
+// ── MSAL ─────────────────────────────────────────────────────────────────────
+function initMsal() {
+  return new msal.PublicClientApplication({
+    auth: {
+      clientId:    CONFIG.clientId,
+      authority:   `https://login.microsoftonline.com/${CONFIG.tenantId}`,
+      redirectUri: CONFIG.redirectUri
+    },
+    cache: { cacheLocation: 'sessionStorage', storeAuthStateInCookie: false }
+  });
+}
+
+async function login() {
+  try {
+    await msalInstance.loginRedirect(loginRequest);
+  } catch(e) { console.error(e); }
+}
+
+function logout() {
+  msalInstance.logoutRedirect({ postLogoutRedirectUri: CONFIG.redirectUri });
+}
+
+async function getToken() {
+  const account = msalInstance.getAllAccounts()[0];
+  if (!account) throw new Error('Not authenticated');
+  try {
+    const r = await msalInstance.acquireTokenSilent({ ...loginRequest, account });
+    return r.accessToken;
+  } catch {
+    const r = await msalInstance.acquireTokenPopup(loginRequest);
+    return r.accessToken;
+  }
+}
+
+// ── Graph API ─────────────────────────────────────────────────────────────────
+async function callGraph(endpoint, method = 'GET', body = null) {
+  const token = await getToken();
+  const res = await fetch('https://graph.microsoft.com/v1.0' + endpoint, {
+    method,
+    headers: {
+      'Authorization': 'Bearer ' + token,
+      'Content-Type': 'application/json'
+    },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  if (res.status === 204) return null;
+  const data = await res.json();
+  if (!res.ok) throw new Error((data.error && data.error.message) || 'Graph API error ' + res.status);
+  return data;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function showState(id) {
+  document.querySelectorAll('.state').forEach(el => el.classList.remove('visible'));
+  document.getElementById('state' + id.charAt(0).toUpperCase() + id.slice(1)).classList.add('visible');
+}
+
+function getInitials(name) {
+  if (!name) return '?';
+  return name.split(' ').map(p => p[0]).slice(0, 2).join('').toUpperCase();
+}
+
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function todayStr() {
+  return new Date().toLocaleDateString('cs-CZ');
+}
+
+function showTab(tab) {
+  document.getElementById('panelForm').style.display  = tab === 'form'  ? '' : 'none';
+  document.getElementById('panelAdmin').style.display = tab === 'admin' ? '' : 'none';
+  document.getElementById('tabForm').classList.toggle('active', tab === 'form');
+  document.getElementById('tabAdmin').classList.toggle('active', tab === 'admin');
+  if (tab === 'admin' && adminRows.length === 0) loadAdminData();
+}
+
+// ── App init ──────────────────────────────────────────────────────────────────
+async function initApp() {
+  showState('loading');
+  try {
+    msalInstance = initMsal();
+    await msalInstance.handleRedirectPromise();
+
+    const accounts = msalInstance.getAllAccounts();
+    if (accounts.length === 0) { showState('login'); return; }
+
+    currentUser = accounts[0];
+    document.getElementById('navUsername').textContent = currentUser.name || currentUser.username;
+    document.getElementById('navAvatar').textContent   = getInitials(currentUser.name || currentUser.username);
+
+    // Show admin tabs if applicable
+    const adminEmails = (CONFIG.adminEmails || [CONFIG.adminEmail]).map(e => e.toLowerCase());
+    if (adminEmails.includes((currentUser.username || '').toLowerCase())) {
+      document.getElementById('tabsBar').style.display = 'flex';
+    }
+
+    showState('app');
+
+    // Load SharePoint data in background
+    await loadSharePointData();
+
+    // Init first user block
+    addUser();
+
+  } catch(e) {
+    console.error(e);
+    showState('login');
+  }
+}
+
+// ── SharePoint data loading ───────────────────────────────────────────────────
+async function loadSharePointData() {
+  try {
+    const site = await callGraph(`/sites/${CONFIG.sharePoint.host}:/sites/${CONFIG.sharePoint.siteName}`);
+    spSiteId = site.id;
+
+    // Find Podklady.xlsx
+    const pSearch = await callGraph(`/sites/${spSiteId}/drive/root/search(q='${encodeURIComponent(CONFIG.sharePoint.podkladyName)}')`);
+    const pFile = (pSearch.value || []).find(f => f.name === CONFIG.sharePoint.podkladyName);
+    if (pFile) {
+      podkladyDriveItemId = pFile.id;
+      // Load groups
+      try {
+        const gr = await callGraph(`/sites/${spSiteId}/drive/items/${podkladyDriveItemId}/workbook/worksheets/Seznam skupin/usedRange`);
+        const flat = (gr.values || []).flat().filter(v => v && String(v).trim());
+        if (flat.length > 0) GROUPS_LIST = flat.map(v => String(v).trim());
+        else GROUPS_LIST = GROUPS_FALLBACK;
+      } catch { GROUPS_LIST = GROUPS_FALLBACK; }
+
+      // Load projects
+      try {
+        const pr = await callGraph(`/sites/${spSiteId}/drive/items/${podkladyDriveItemId}/workbook/worksheets/Databáze projektů/usedRange`);
+        const rows = (pr.values || []).filter(r => r[0] && r[1]);
+        if (rows.length > 0) PROJECTS_LIST = rows.map(r => ({ code: String(r[0]).trim(), name: String(r[1]).trim() }));
+        else PROJECTS_LIST = PROJECTS_FALLBACK;
+      } catch { PROJECTS_LIST = PROJECTS_FALLBACK; }
+    } else {
+      GROUPS_LIST = GROUPS_FALLBACK;
+      PROJECTS_LIST = PROJECTS_FALLBACK;
+    }
+
+    // Find Databáze file
+    const dSearch = await callGraph(`/sites/${spSiteId}/drive/root/search(q='${encodeURIComponent(CONFIG.sharePoint.databazeName)}')`);
+    const dFile = (dSearch.value || []).find(f => f.name === CONFIG.sharePoint.databazeName);
+    if (dFile) databazeDriveItemId = dFile.id;
+
+  } catch(e) {
+    console.error('SP load error:', e);
+    GROUPS_LIST = GROUPS_FALLBACK;
+    PROJECTS_LIST = PROJECTS_FALLBACK;
+  }
+
+  populateProjects();
+
+  // Rebuild groups in existing user blocks
+  document.querySelectorAll('.grp-list-container').forEach(el => {
+    const uid = el.dataset.uid;
+    buildGroupsList(uid);
+  });
+}
+
+function populateProjects() {
+  const sel = document.getElementById('projekt');
+  const current = sel.value;
+  sel.innerHTML = '<option value="">— Vyberte projekt —</option>';
+  PROJECTS_LIST.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = `${p.code} – ${p.name}`;
+    opt.textContent = `${p.code} – ${p.name}`;
+    sel.appendChild(opt);
+  });
+  if (current) sel.value = current;
+
+  // Also populate admin filter
+  const fSel = document.getElementById('fProjekt');
+  if (fSel) {
+    fSel.innerHTML = '<option value="">Všechny projekty</option>';
+    PROJECTS_LIST.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = `${p.code} – ${p.name}`;
+      opt.textContent = `${p.code} – ${p.name}`;
+      fSel.appendChild(opt);
+    });
+  }
+}
+
+// ── Form: add / remove user ───────────────────────────────────────────────────
+function addUser() {
+  userCount++;
+  const id = userCount;
+  const container = document.getElementById('usersContainer');
+  const div = document.createElement('div');
+  div.className = 'ue';
+  div.id = 'ue' + id;
+  div.innerHTML = `
+    <div class="ue-head">
+      <div><span class="ue-num">${id}</span><span class="ue-label">Účastník č. ${id}</span></div>
+      ${id > 1 ? `<button class="btn-rm" onclick="removeUser(${id})" title="Odebrat účastníka">×</button>` : ''}
+    </div>
+    <div class="grid2">
+      <div class="fg">
+        <label>Jméno *</label>
+        <input type="text" id="jmeno${id}" placeholder="Jméno">
+        <div class="err-msg" id="err-jmeno${id}">Povinné pole.</div>
+      </div>
+      <div class="fg">
+        <label>Příjmení *</label>
+        <input type="text" id="prijmeni${id}" placeholder="Příjmení">
+        <div class="err-msg" id="err-prijmeni${id}">Povinné pole.</div>
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="fg">
+        <label>E-mail *</label>
+        <input type="email" id="email${id}" placeholder="jmeno@firma.cz">
+        <div class="err-msg" id="err-email${id}">Zadejte platný e-mail.</div>
+      </div>
+      <div class="fg">
+        <label>Telefon</label>
+        <input type="tel" id="tel${id}" placeholder="+420 000 000 000">
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="fg">
+        <label>Firma *</label>
+        <input type="text" id="firma${id}" placeholder="Název firmy">
+        <div class="err-msg" id="err-firma${id}">Povinné pole.</div>
+      </div>
+      <div class="fg">
+        <label>IČO</label>
+        <input type="text" id="ico${id}" placeholder="00000000">
+      </div>
+    </div>
+    <div class="grp-block">
+      <div class="grp-hdr">Pracovní skupiny *</div>
+      <p class="grp-note">Vyberte alespoň jednu skupinu pro tohoto účastníka.</p>
+      <input class="grp-search-inp" type="text" id="grpQ${id}" placeholder="Hledat skupinu…" oninput="filterGroups(${id})">
+      <div class="groups-list grp-list-container" id="grpList${id}" data-uid="${id}"></div>
+      <div class="grp-no-match" id="grpNoMatch${id}">Žádná skupina neodpovídá hledání.</div>
+      <div class="grp-sel-info" id="grpSel${id}"></div>
+      <div class="grp-err" id="grpErr${id}">Vyberte alespoň jednu pracovní skupinu.</div>
+    </div>`;
+  container.appendChild(div);
+  buildGroupsList(id);
+}
+
+function removeUser(id) {
+  const el = document.getElementById('ue' + id);
+  if (el) el.remove();
+}
+
+function buildGroupsList(id) {
+  const groups = GROUPS_LIST.length > 0 ? GROUPS_LIST : GROUPS_FALLBACK;
+  const w = document.getElementById('grpList' + id);
+  if (!w) return;
+  w.innerHTML = '';
+  groups.forEach(g => {
+    const lbl = document.createElement('label');
+    lbl.className = 'grp-row';
+    lbl.dataset.n = g.toLowerCase();
+    const cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.value = g;
+    cb.addEventListener('change', () => {
+      const n = w.querySelectorAll('input:checked').length;
+      const si = document.getElementById('grpSel' + id);
+      if (si) si.textContent = n ? `Vybráno: ${n} ${n===1?'skupina':n<5?'skupiny':'skupin'}` : '';
+      if (n > 0) { const ge = document.getElementById('grpErr'+id); if(ge) ge.classList.remove('show'); }
+    });
+    lbl.appendChild(cb);
+    lbl.appendChild(document.createTextNode(g));
+    w.appendChild(lbl);
+  });
+}
+
+function filterGroups(id) {
+  const q = (document.getElementById('grpQ' + id).value || '').toLowerCase().trim();
+  const rows = document.querySelectorAll('#grpList' + id + ' .grp-row');
+  let vis = 0;
+  rows.forEach(r => { const m = !q || r.dataset.n.includes(q); r.classList.toggle('hidden', !m); if(m) vis++; });
+  const nm = document.getElementById('grpNoMatch' + id);
+  if (nm) nm.classList.toggle('show', vis === 0 && q.length > 0);
+}
+
+// ── Form: validate & submit ───────────────────────────────────────────────────
+function validateForm() {
+  let valid = true;
+  const errors = [];
+
+  // Projekt
+  const proj = document.getElementById('projekt');
+  const errProj = document.getElementById('err-projekt');
+  if (!proj.value) {
+    proj.classList.add('err'); errProj.classList.add('show');
+    errors.push('Vyberte projekt stavby.'); valid = false;
+  } else { proj.classList.remove('err'); errProj.classList.remove('show'); }
+
+  // Users
+  const ues = document.querySelectorAll('.ue');
+  if (ues.length === 0) { errors.push('Přidejte alespoň jednoho účastníka.'); valid = false; }
+
+  ues.forEach(ue => {
+    const uid = ue.id.replace('ue', '');
+
+    // Text fields
+    [['jmeno','Jméno'],['prijmeni','Příjmení'],['firma','Firma']].forEach(([f]) => {
+      const el = document.getElementById(f + uid);
+      const er = document.getElementById('err-' + f + uid);
+      if (!el || !el.value.trim()) {
+        if(el) el.classList.add('err'); if(er) er.classList.add('show'); valid = false;
+      } else { el.classList.remove('err'); er.classList.remove('show'); }
+    });
+
+    // Email
+    const em = document.getElementById('email' + uid);
+    const emer = document.getElementById('err-email' + uid);
+    const emailOk = em && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em.value.trim());
+    if (!emailOk) {
+      if(em) em.classList.add('err'); if(emer) emer.classList.add('show'); valid = false;
+    } else { em.classList.remove('err'); emer.classList.remove('show'); }
+
+    // Groups
+    const n = document.querySelectorAll('#grpList' + uid + ' input:checked').length;
+    const ge = document.getElementById('grpErr' + uid);
+    if (n === 0) { if(ge) ge.classList.add('show'); valid = false; }
+    else { if(ge) ge.classList.remove('show'); }
+  });
+
+  return { valid, errors };
+}
+
+async function submitForm() {
+  const { valid, errors } = validateForm();
+  const errBar = document.getElementById('formErrBar');
+  const succBar = document.getElementById('successBar');
+  succBar.classList.remove('show');
+
+  if (!valid) {
+    errBar.textContent = 'Formulář obsahuje chyby. Vyplňte všechna povinná pole (*) a vyberte pracovní skupiny.';
+    errBar.classList.add('show');
+    errBar.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+  errBar.classList.remove('show');
+
+  const submitBtn = document.querySelector('.btn-submit');
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Odesílám…';
+
+  try {
+    const projekt = document.getElementById('projekt').value;
+    const zadalJmeno = currentUser.name || currentUser.username;
+    const zadalEmail = currentUser.username;
+    const datum = todayStr();
+
+    const newRows = [];
+    document.querySelectorAll('.ue').forEach(ue => {
+      const uid = ue.id.replace('ue', '');
+      const skupiny = Array.from(document.querySelectorAll('#grpList' + uid + ' input:checked')).map(c => c.value).join(', ');
+      newRows.push([
+        datum,
+        zadalJmeno,
+        zadalEmail,
+        document.getElementById('jmeno' + uid).value.trim(),
+        document.getElementById('prijmeni' + uid).value.trim(),
+        document.getElementById('email' + uid).value.trim(),
+        (document.getElementById('tel' + uid).value || '').trim(),
+        document.getElementById('firma' + uid).value.trim(),
+        (document.getElementById('ico' + uid).value || '').trim(),
+        skupiny,
+        projekt,
+        'FALSE','FALSE','FALSE','FALSE','FALSE'
+      ]);
+    });
+
+    if (databazeDriveItemId && spSiteId) {
+      await appendExcelRows(newRows);
+    } else {
+      console.warn('Databáze nenalezena – záznam uložen pouze lokálně.');
+    }
+
+    succBar.textContent = `Žádost byla úspěšně odeslána! Přidáno ${newRows.length} účastník${newRows.length===1?'':'ů'} – administrátor bude informován.`;
+    succBar.classList.add('show');
+    succBar.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    clearForm();
+  } catch(e) {
+    console.error(e);
+    errBar.textContent = 'Chyba při odesílání: ' + e.message;
+    errBar.classList.add('show');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Odeslat žádost o přidání';
+  }
+}
+
+async function appendExcelRows(rows) {
+  // Get current used range to find next free row
+  const used = await callGraph(
+    `/sites/${spSiteId}/drive/items/${databazeDriveItemId}/workbook/worksheets/${encodeURIComponent(CONFIG.sharePoint.databazaSheet)}/usedRange`
+  );
+  const nextRow = (used.rowCount || 1) + 1;
+  const lastRow = nextRow + rows.length - 1;
+  const lastCol = String.fromCharCode(64 + rows[0].length); // P = 16
+  const rangeAddr = `A${nextRow}:${lastCol}${lastRow}`;
+
+  await callGraph(
+    `/sites/${spSiteId}/drive/items/${databazeDriveItemId}/workbook/worksheets/${encodeURIComponent(CONFIG.sharePoint.databazaSheet)}/range(address='${rangeAddr}')`,
+    'PATCH',
+    { values: rows }
+  );
+}
+
+function clearForm() {
+  document.getElementById('projekt').value = '';
+  document.getElementById('usersContainer').innerHTML = '';
+  document.getElementById('formErrBar').classList.remove('show');
+  userCount = 0;
+  addUser();
+}
+
+// ── Admin: load & render ──────────────────────────────────────────────────────
+async function loadAdminData() {
+  const tbody = document.getElementById('adminTbody');
+  tbody.innerHTML = '<tr class="loading-row"><td colspan="9">Načítání dat ze SharePointu…</td></tr>';
+  adminRows = [];
+
+  try {
+    if (!databazeDriveItemId || !spSiteId) {
+      await loadSharePointData();
+    }
+    if (!databazeDriveItemId) throw new Error('Soubor databáze nenalezen na SharePointu.');
+
+    const used = await callGraph(
+      `/sites/${spSiteId}/drive/items/${databazeDriveItemId}/workbook/worksheets/${encodeURIComponent(CONFIG.sharePoint.databazaSheet)}/usedRange`
+    );
+
+    const vals = used.values || [];
+    if (vals.length <= 1) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="9">Databáze je prázdná.</td></tr>';
+      document.getElementById('resultCount').textContent = 'Žádné záznamy.';
+      return;
+    }
+
+    // Skip header row (index 0), data starts at row index 1 → Excel row 2
+    for (let i = 1; i < vals.length; i++) {
+      adminRows.push({ rowIndex: i + 1, values: vals[i] });
+    }
+
+    renderAdminTable(adminRows);
+  } catch(e) {
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="9">Chyba načítání: ${esc(e.message)}</td></tr>`;
+    console.error(e);
+  }
+}
+
+const CHK_LABELS = ['Čeká na vyřízení','E-mail odeslán','Pozván do systému','Pracovní balíček','Zápis do SD'];
+const CHK_COLS   = ['L','M','N','O','P'];
+
+function renderAdminTable(rows) {
+  const tbody = document.getElementById('adminTbody');
+  const count = document.getElementById('resultCount');
+
+  if (rows.length === 0) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="9">Žádné záznamy neodpovídají filtru.</td></tr>';
+    count.textContent = `Zobrazeno: 0 z ${adminRows.length} záznamů`;
+    return;
+  }
+
+  count.textContent = `Zobrazeno: ${rows.length} z ${adminRows.length} záznamů`;
+  tbody.innerHTML = '';
+
+  rows.forEach(rec => {
+    const v = rec.values;
+    // Cols: 0=Datum,1=ZadalJmeno,2=ZadalEmail,3=Jmeno,4=Prijmeni,5=Email,6=Tel,7=Firma,8=ICO,9=Skupiny,10=Projekt,11-15=checks
+    const checks = [v[11],v[12],v[13],v[14],v[15]].map(c => c === true || String(c).toUpperCase() === 'TRUE');
+    const allDone = checks.every(Boolean);
+    const anyDone = checks.some(Boolean);
+    const badge = allDone
+      ? `<span class="badge badge-done">Dokončeno</span>`
+      : anyDone
+        ? `<span class="badge badge-progress">Probíhá</span>`
+        : `<span class="badge badge-wait">Čeká</span>`;
+
+    const checksHtml = checks.map((done, ci) =>
+      `<div class="chk ${done?'done':''}" data-tip="${CHK_LABELS[ci]}"
+        onclick="toggleCheck(${rec.rowIndex},${ci},${done})">${done?'✓':ci+1}</div>`
+    ).join('');
+
+    const emailSent = checks[1];
+    const tr = document.createElement('tr');
+    tr.dataset.ri = rec.rowIndex;
+    tr.innerHTML = `
+      <td style="white-space:nowrap">${esc(v[0]||'')}</td>
+      <td style="font-size:11px">${esc(v[1]||'')}</td>
+      <td style="font-size:11px;white-space:nowrap">${esc(v[10]||'')}</td>
+      <td><strong>${esc((v[3]||'')+' '+(v[4]||''))}</strong><br><span style="font-size:10px">${badge}</span></td>
+      <td>${esc(v[7]||'')}</td>
+      <td style="font-size:11px">${esc(v[5]||'')}</td>
+      <td style="font-size:11px;max-width:160px;word-break:break-word">${esc(v[9]||'')}</td>
+      <td><div class="checks">${checksHtml}</div></td>
+      <td>
+        <div class="admin-actions">
+          <button class="btn btn-email btn-sm" onclick="sendInviteEmail(${rec.rowIndex})"
+            ${emailSent?'disabled title="E-mail již odeslán"':''}>
+            ${emailSent?'Odesláno':'Odeslat e-mail'}
+          </button>
+        </div>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function applyFilters() {
+  const proj  = document.getElementById('fProjekt').value.toLowerCase();
+  const firma = document.getElementById('fFirma').value.toLowerCase();
+  const jmeno = document.getElementById('fJmeno').value.toLowerCase();
+  const stav  = document.getElementById('fStav').value;
+
+  const filtered = adminRows.filter(rec => {
+    const v = rec.values;
+    if (proj  && !(String(v[10]||'').toLowerCase().includes(proj))) return false;
+    if (firma && !(String(v[7]||'').toLowerCase().includes(firma))) return false;
+    if (jmeno && !((String(v[3]||'')+' '+String(v[4]||'')+' '+String(v[5]||'')).toLowerCase().includes(jmeno))) return false;
+    const checks = [v[11],v[12],v[13],v[14],v[15]].map(c => c === true || String(c).toUpperCase() === 'TRUE');
+    if (stav === 'ceka'     && checks.some(Boolean)) return false;
+    if (stav === 'progress' && (checks.every(Boolean) || !checks.some(Boolean))) return false;
+    if (stav === 'done'     && !checks.every(Boolean)) return false;
+    return true;
+  });
+  renderAdminTable(filtered);
+}
+
+function resetFilters() {
+  document.getElementById('fProjekt').value = '';
+  document.getElementById('fFirma').value   = '';
+  document.getElementById('fJmeno').value   = '';
+  document.getElementById('fStav').value    = '';
+  renderAdminTable(adminRows);
+}
+
+async function toggleCheck(rowIndex, colIdx, currentValue) {
+  const newValue = !currentValue;
+  const col = CHK_COLS[colIdx];
+  try {
+    await callGraph(
+      `/sites/${spSiteId}/drive/items/${databazeDriveItemId}/workbook/worksheets/${encodeURIComponent(CONFIG.sharePoint.databazaSheet)}/range(address='${col}${rowIndex}')`,
+      'PATCH',
+      { values: [[newValue]] }
+    );
+    // Update local state
+    const rec = adminRows.find(r => r.rowIndex === rowIndex);
+    if (rec) rec.values[11 + colIdx] = newValue;
+    applyFilters();
+  } catch(e) {
+    alert('Chyba při ukládání: ' + e.message);
+  }
+}
+
+// ── Admin: send email ─────────────────────────────────────────────────────────
+async function sendInviteEmail(rowIndex) {
+  const rec = adminRows.find(r => r.rowIndex === rowIndex);
+  if (!rec) return;
+  const v = rec.values;
+  const toName   = `${v[3]||''} ${v[4]||''}`.trim();
+  const toEmail  = String(v[5] || '');
+  const ccEmail  = String(v[2] || '');
+  const projekt  = String(v[10] || '');
+  const skupiny  = String(v[9] || '');
+  const zadal    = String(v[1] || '');
+
+  if (!toEmail) { alert('Účastník nemá e-mail.'); return; }
+
+  const subject = `Pozvánka do CDE projektu – ${projekt}`;
+  const bodyHtml = `
+<div style="font-family:Segoe UI,sans-serif;max-width:600px;color:#111">
+  <div style="background:#e41a12;padding:14px 20px;border-radius:6px 6px 0 0">
+    <span style="color:#fff;font-weight:900;font-size:18px;letter-spacing:1px">ESOX</span>
+    <span style="color:rgba(255,255,255,.8);font-size:13px;margin-left:12px">BIM oddělení</span>
+  </div>
+  <div style="background:#f9f9f9;padding:24px 20px;border:1px solid #ddd;border-top:none;border-radius:0 0 6px 6px">
+    <p>Dobrý den, <strong>${toName}</strong>,</p>
+    <p style="margin-top:12px">na žádost <strong>${zadal}</strong> Vás zveme do systému správy stavební dokumentace <strong>Dalux CDE</strong> pro projekt:</p>
+    <div style="background:#e41a12;color:#fff;padding:10px 16px;border-radius:5px;margin:14px 0;font-weight:700">${projekt}</div>
+    <p>Budete zařazeni do pracovních skupin:</p>
+    <p style="background:#eee;padding:8px 12px;border-radius:4px;font-size:13px;margin:8px 0">${skupiny}</p>
+    <p style="margin-top:14px">Pozvánku do systému Dalux obdržíte na tuto e-mailovou adresu v nejbližší době.</p>
+    <p style="margin-top:16px">V případě dotazů se obraťte na:</p>
+    <p style="font-weight:600">Vojtěch Poláček – BIM oddělení<br>
+       <a href="mailto:vojtech.polacek@esox.red" style="color:#e41a12">vojtech.polacek@esox.red</a></p>
+    <hr style="border:none;border-top:1px solid #ddd;margin:20px 0">
+    <p style="font-size:11px;color:#888">ESOX, spol. s r.o. · BIM oddělení</p>
+  </div>
+</div>`;
+
+  try {
+    const mail = {
+      message: {
+        subject,
+        body: { contentType: 'HTML', content: bodyHtml },
+        toRecipients: [{ emailAddress: { address: toEmail, name: toName } }],
+        ccRecipients: ccEmail ? [{ emailAddress: { address: ccEmail } }] : []
+      },
+      saveToSentItems: true
+    };
+    await callGraph('/me/sendMail', 'POST', mail);
+
+    // Mark email sent in Excel
+    await toggleCheck(rowIndex, 1, false); // col M = index 1
+    alert(`E-mail byl úspěšně odeslán na ${toEmail}`);
+  } catch(e) {
+    alert('Chyba při odesílání e-mailu: ' + e.message);
+  }
+}
+
+// ── Admin: init database ──────────────────────────────────────────────────────
+async function initDatabase() {
+  if (!confirm('Inicializovat záhlaví databáze v řádku 1?')) return;
+  try {
+    if (!databazeDriveItemId || !spSiteId) await loadSharePointData();
+    const headers = [['Datum zadání','Zadal (jméno)','Zadal (e-mail)','Jméno','Příjmení','E-mail','Telefon','Firma','IČO','Skupiny','Projekt','Čeká na vyřízení','E-mail odeslán','Pozván do systému','Pracovní balíček','Zápis do SD']];
+    await callGraph(
+      `/sites/${spSiteId}/drive/items/${databazeDriveItemId}/workbook/worksheets/${encodeURIComponent(CONFIG.sharePoint.databazaSheet)}/range(address='A1:P1')`,
+      'PATCH',
+      { values: headers }
+    );
+    alert('Záhlaví databáze bylo úspěšně inicializováno.');
+  } catch(e) {
+    alert('Chyba: ' + e.message);
+  }
+}
+
+// ── Bootstrap ─────────────────────────────────────────────────────────────────
+window.addEventListener('load', initApp);
+</script>
+</body>
+</html>
